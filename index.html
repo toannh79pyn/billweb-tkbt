@@ -9,6 +9,7 @@
 <script>
 /* V1.6 — Khi mở từ trang tĩnh (không phải script.google.com), giả lập google.script.run bằng fetch tới API.
    credentials:'omit' => không gửi cookie Google => không dính lỗi nhiều tài khoản. */
+var WEB_VER='V1.6.2';
 var API_RETRY={getReport:1,getDetail:1,getPhotoBoard:1,getPhoto:1,adminListUsers:1,adminLog:1};
 var API_URL='https://script.google.com/macros/s/AKfycbx6UBTG9PA8eRusWjrglhudlh9ejy02jBnatXJNo_ySonm4pUUQ8Cz9zGv0h_Zp9bl9/exec';
 (function(){
@@ -130,7 +131,8 @@ td.n{cursor:pointer;color:var(--navy2);text-decoration:underline dotted}td.n:hov
 <div id="imgv"><div class="bar"><b style="color:var(--navy)">Ảnh báo cáo</b><a id="imgdl" class="btn" download>⬇ Tải ảnh PNG</a><button class="btn s" onclick="imgv.style.display='none'">Đóng</button><span class="note" style="margin:0">Điện thoại: nhấn giữ ảnh → Lưu ảnh / Chia sẻ</span></div><img id="imgel"><div id="imgs"></div></div>
 <div id="upm" class="ov"><div class="pbox">
   <h3 style="margin:0;color:var(--navy)">Ảnh onsite tại nhà KH</h3><div class="note" id="upinfo"></div>
-  <label class="bigbtn">📷 Chụp / chọn ảnh<input id="upf" type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="upPick(this.files)"></label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="bigbtn" style="flex:1;min-width:140px">📷 Chụp ảnh<input id="upf" type="file" accept="image/*" capture="environment" style="display:none" onchange="upPick(this.files,'cam');this.value=''"></label>
+  <label class="bigbtn" style="flex:1;min-width:140px;background:var(--navy)">🖼 Chọn ảnh có sẵn<input id="upf2" type="file" accept="image/*" multiple style="display:none" onchange="upPick(this.files,'lib');this.value=''"></label></div>
   <input id="upnote" placeholder="Ghi chú (VD: KH đi vắng, đã dán giấy báo)" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:6px">
   <div class="note" id="upgps"></div><div id="upv"></div><div class="err" id="uperr"></div>
   <div style="display:flex;gap:8px"><button class="btn" id="upgo" onclick="upSend()">⬆ Lưu ảnh</button><button class="btn s" onclick="upm.style.display='none'">Đóng</button></div>
@@ -157,7 +159,7 @@ lp.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
 function doLogout(){if(TOKEN)google.script.run.logout(TOKEN);TOKEN=null;try{sessionStorage.removeItem('bw_t')}catch(e){}location.reload()}
 (function(){try{var t=sessionStorage.getItem('bw_t');if(t){TOKEN=t;document.getElementById('login').classList.add('hide');app.classList.remove('hide');refresh(false)}}catch(e){}})();
 function refresh(force){call('getReport',[TOKEN,!!force],function(r){REP=r;
-  var t=r.today;hsub.textContent='Hôm nay '+t.d+'/'+t.m+'/'+t.y+' · Dữ liệu đọc lúc '+r.builtAt+' · Nền tháng trước: '+r.prevSheet;
+  var t=r.today;hsub.textContent='Hôm nay '+t.d+'/'+t.m+'/'+t.y+' · Dữ liệu đọc lúc '+r.builtAt+' · Nền tháng trước: '+r.prevSheet+' · Web '+WEB_VER+' / máy chủ '+String(r.version||'').replace('BILLWEB_','');
   who.textContent=r.user.u+' ('+({OWNER:'Chủ web',ADMIN:'Đồng quản lý',KTV:'KTV'}[r.user.role]||r.user.role)+')';btnRef.style.display=isAdmin()?'':'none';buildNav();render()})}
 function isAdmin(){return REP&&(REP.user.role==='ADMIN'||REP.user.role==='OWNER')}
 function isOwner(){return REP&&REP.user.role==='OWNER'}
@@ -312,7 +314,7 @@ function exportPhotoReport(){if(!window.html2canvas){alert('Chưa tải được
     document.body.appendChild(w);var hgt=w.scrollHeight;
     html2canvas(w,{scale:1.6,backgroundColor:'#f3f5f9',width:1500,height:hgt,windowWidth:1500,scrollX:0,scrollY:-window.scrollY,logging:false}).then(function(c){w.remove();out.push(c.toDataURL('image/png'));page(p+1)}).catch(function(e){w.remove();busy(false);alert('Lỗi xuất ảnh: '+e)})})(0)}}
 function viewPhoto(id,hd){call('getPhoto',[TOKEN,id,false],function(x){if(!x.ok){alert(x.msg);return}imgs.innerHTML='';imgel.style.display='';imgdl.style.display='';imgel.src=x.data;imgdl.href=x.data;imgdl.download=hd+'_'+id+'.jpg';imgv.style.display='flex'})}
-function openUp(hd){UPH=PB.rows.filter(function(r){return r.hd===hd})[0];if(!UPH)return;try{uphd.value=''}catch(e){}UPQ=[];upv.innerHTML='';uperr.textContent='';upnote.value='';upf.value='';
+function openUp(hd){UPH=PB.rows.filter(function(r){return r.hd===hd})[0];if(!UPH)return;try{uphd.value=''}catch(e){}UPQ=[];upv.innerHTML='';uperr.textContent='';upnote.value='';upf.value='';upf2.value='';
   upinfo.innerHTML='<b>'+esc(UPH.hd)+'</b> · '+esc(UPH.ten)+' · KTV '+esc(UPH.collector)+'<br>Chụp tại nhà KH (cổng/nhà/giấy báo). Ảnh tự ghi HĐ, KTV, ngày giờ và tọa độ lên góc ảnh.'+(UPH.n?'<br><b style="color:var(--amber)">HĐ đã có '+UPH.n+' ảnh. Mỗi HĐ giữ '+PB.maxPerHd+' ảnh mới nhất: up thêm sẽ thay ảnh cũ nhất.</b>':'')+'';
   upold.innerHTML=UPH.photos.length?UPH.photos.map(function(p){return '<div style="text-align:center;font-size:11px"><img class="ph" data-pid="'+p.id+'" style="width:84px;height:84px;object-fit:cover;border-radius:6px" onclick="viewPhoto(\''+p.id+'\',\''+UPH.hd+'\')"><br>'+esc(p.at)+'<br><a href="javascript:delPhoto(\''+p.id+'\')" style="color:var(--red)">Xóa</a></div>'}).join(''):'<span class="note">Chưa có ảnh</span>';
   upm.style.display='flex';loadThumbs();UPGEO={};upgps.textContent='Đang lấy vị trí…';
@@ -320,15 +322,17 @@ function openUp(hd){UPH=PB.rows.filter(function(r){return r.hd===hd})[0];if(!UPH
 function shrink(file,maxW,q,stamp){return new Promise(function(ok,bad){var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var sc=Math.min(1,maxW/Math.max(im.width,im.height)),w=Math.round(im.width*sc),h=Math.round(im.height*sc),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');x.drawImage(im,0,0,w,h);
   if(stamp){var fs=Math.max(14,Math.round(w/45));x.font='bold '+fs+'px Arial';var lines=stamp.split('\n'),bh=(fs+6)*lines.length+10;x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,h-bh,w,bh);x.fillStyle='#fff';lines.forEach(function(l,i){x.fillText(l,10,h-bh+fs+4+i*(fs+6))})}
   ok(c.toDataURL('image/jpeg',q))};im.onerror=bad;im.src=fr.result};fr.onerror=bad;fr.readAsDataURL(file)})}
-function upPick(files){[].slice.call(files).forEach(function(f){if(UPQ.length>=PB.maxPerHd){uperr.textContent='Mỗi lần up tối đa '+PB.maxPerHd+' ảnh/HĐ (web giữ '+PB.maxPerHd+' ảnh mới nhất)';return}UPQ.push(f);var u=URL.createObjectURL(f);upv.insertAdjacentHTML('beforeend','<img src="'+u+'">')})}
+function upPick(files,src){[].slice.call(files).forEach(function(f){f._src=src||'cam';if(UPQ.length>=PB.maxPerHd){uperr.textContent='Mỗi lần up tối đa '+PB.maxPerHd+' ảnh/HĐ (web giữ '+PB.maxPerHd+' ảnh mới nhất)';return}UPQ.push(f);var u=URL.createObjectURL(f);upv.insertAdjacentHTML('beforeend','<img src="'+u+'">')})}
 function upSend(){if(!UPQ.length){uperr.textContent='Chưa chọn ảnh';return}upgo.disabled=true;var done=0,total=UPQ.length;
   var now=new Date(),ts=('0'+now.getDate()).slice(-2)+'/'+('0'+(now.getMonth()+1)).slice(-2)+'/'+now.getFullYear()+' '+now.toTimeString().slice(0,5);
   var stamp='HĐ '+UPH.hd+' · KTV '+UPH.collector+' · '+ts+(UPGEO.lat?'\nGPS '+UPGEO.lat+', '+UPGEO.lng+' (±'+UPGEO.acc+'m)':'');
   (function one(){if(!UPQ.length){upgo.disabled=false;alert('Đã lưu '+done+'/'+total+' ảnh cho HĐ '+UPH.hd);upm.style.display='none';PB=null;renderPhoto();return}
    var f=UPQ.shift();uperr.textContent='Đang nén & tải ảnh '+(done+1)+'/'+total+'…';
-   Promise.all([shrink(f,1600,.78,stamp),shrink(f,320,.6,'')]).then(function(d){
+   var lib=f._src==='lib',lm=f.lastModified?new Date(f.lastModified):null,lms=lm?('0'+lm.getDate()).slice(-2)+'/'+('0'+(lm.getMonth()+1)).slice(-2)+' '+lm.toTimeString().slice(0,5):'?';
+   var st=stamp+(lib?'\nẢnh chọn từ thư viện · file tạo '+lms:'');
+   Promise.all([shrink(f,1600,.78,st),shrink(f,320,.6,'')]).then(function(d){
     google.script.run.withSuccessHandler(function(x){if(!x.ok){uperr.textContent=x.msg;upgo.disabled=false;return}done++;UPH.n=x.n;one()}).withFailureHandler(function(e){uperr.textContent='Lỗi: '+(e.message||e)+'. Bấm Lưu ảnh để thử lại.';UPQ.unshift(f);upgo.disabled=false})
-     .uploadPhoto(TOKEN,UPH.hd,d[0],d[1],{lat:UPGEO.lat,lng:UPGEO.lng,acc:UPGEO.acc,note:upnote.value})}).catch(function(){uperr.textContent='Không đọc được file ảnh';upgo.disabled=false})})()}
+     .uploadPhoto(TOKEN,UPH.hd,d[0],d[1],{lat:UPGEO.lat,lng:UPGEO.lng,acc:UPGEO.acc,note:(lib?'[Thư viện, file '+lms+'] ':'')+upnote.value})}).catch(function(){uperr.textContent='Không đọc được file ảnh';upgo.disabled=false})})()}
 function delPhoto(id){if(!confirm('Xóa ảnh này?'))return;call('deletePhoto',[TOKEN,id],function(x){if(!x.ok){alert(x.msg);return}upm.style.display='none';PB=null;renderPhoto()})}
 function exportImg(){if(!window.html2canvas){alert('Chưa tải được công cụ xuất ảnh. Kiểm tra mạng rồi tải lại trang (F5).');return}
   busy(true);var tab=(nav.querySelector('a.on')||{}).textContent||'';var w=document.createElement('div');w.id='exp';
